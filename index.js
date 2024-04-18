@@ -2,6 +2,7 @@ require('dotenv').config();
 const cors = require('cors');
 const express = require('express');
 const app = express();
+const { body, validationResult } = require('express-validator');
 const port = 3000;
 
 app.use(cors());
@@ -24,29 +25,61 @@ const transporterOptions = {
     
 let transporter = nodemailer.createTransport(transporterOptions);
     
-app.post('/email', (req, res) => {
-    console.log(req)
-    let body  = req.body;
-    console.log(body)
-    const mailOptions = {
-        from: body.email,
-        to: 'caparra0992@gmail.com',
-        subject: `${body.name} - ${body.email}`,
-        text: body.message
-    }
-        
-    transporter.sendMail(mailOptions, function(err, data) {
-        if (err) {
-            console.log("Error " + err);
-        } else {
-            console.log("Email sent successfully");
+app.post(
+    '/email',
+    [body('name','Please fill your name').notEmpty().escape(),
+    body('email','Email format is invalid').isEmail(),
+    body('email','Email is empty').notEmpty(),
+    body('message', 'Please fill your message').notEmpty()],
+    (req, res, next) => {
+        const result = validationResult(req);
+        if(result.isEmpty()) {
+            const mailOptions = {
+                    from: req.body.email,
+                    to: 'caparra0992@gmail.com',
+                    subject: `${req.body.name} - ${req.body.email}`,
+                    text: req.body.message
+                }
+
+                transporter.sendMail(mailOptions, function(err, data) {
+                    if (err) {
+                        res.send({
+                            msg: err,
+                            ok: false
+                        });
+                    } else {
+                        res.send({
+                            msg: "Email sent successfully",
+                            ok: true
+                        });
+                    }
+                });
         }
-});
-    
-res.send({
-    ok: true,
-    body
-})
+        res.send({ 
+            errors: result.array(), 
+        });
+    // let body  = req.body;
+
+    // const mailOptions = {
+    //     from: body.email,
+    //     to: 'caparra0992@gmail.com',
+    //     subject: `${body.name} - ${body.email}`,
+    //     text: body.message
+    // }
+        
+    // transporter.sendMail(mailOptions, function(err, data) {
+    //     if (err) {
+    //         res.send({
+    //             msg: err,
+    //             ok: false
+    //         });
+    //     } else {
+    //         res.send({
+    //             msg: "Email sent successfully",
+    //             ok: true
+    //         });
+    //     }
+    // });
 });
 
 app.listen(port, ()=> {
